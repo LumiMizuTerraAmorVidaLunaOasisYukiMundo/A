@@ -1,140 +1,124 @@
 package com.example.myapplication
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothManager
-import android.bluetooth.le.BluetoothLeScanner
-import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanResult
-import android.content.Context
-import android.content.Intent
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCallback
+import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothProfile
+import android.bluetooth.le.*
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
-import com.google.android.material.snackbar.Snackbar
-import androidx.appcompat.app.AppCompatActivity
-import androidx.navigation.findNavController
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.navigateUp
-import androidx.navigation.ui.setupActionBarWithNavController
-import android.view.Menu
-import android.view.MenuItem
-import android.widget.Toast
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import androidx.annotation.RequiresPermission
-import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.example.myapplication.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var appBarConfiguration: AppBarConfiguration
-    private lateinit var binding: ActivityMainBinding
+    private val SCAN_PERIOD: Long = 10000
+    private var scanning = false
+    private lateinit var bluetoothAdapter: BluetoothAdapter
+    private var scanner: BluetoothLeScanner? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private var found = false;
 
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-
-        setSupportActionBar(binding.toolbar)
-
-        val navController = findNavController(R.id.nav_host_fragment_content_main)
-        appBarConfiguration = AppBarConfiguration(navController.graph)
-        setupActionBarWithNavController(navController, appBarConfiguration)
-
-        binding.fab.setOnClickListener { view ->
-            Snackbar.make(view, "Starting scan", Snackbar.LENGTH_LONG)
-                .setAction("Action", null)
-                .setAnchorView(R.id.fab).show()
+        // Permission check
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                1)
         }
 
+        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        scanner = bluetoothAdapter.bluetoothLeScanner
 
-        /* do this somewhere else */
-
-
-
-        // Initialize Bluetooth adapter
-
-        val bluetoothManager: BluetoothManager = getSystemService(BluetoothManager::class.java)
-        val bluetoothAdapter: BluetoothAdapter? = bluetoothManager.getAdapter()
-        if (bluetoothAdapter == null) {
-            // Device doesn't support Bluetooth
-        }
-        if (!bluetoothAdapter!!.isEnabled()) {
-            startActivityForResult(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE), 1);
-        }
-        bluetoothLeScanner = bluetoothAdapter!!.getBluetoothLeScanner()
-
-        // Start scanning for BLE devices
-        startScanning()
-
-    }
-override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        menuInflater.inflate(R.menu.menu_main, menu)
-        return true
+        scanLeDevice()
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        return when(item.itemId) {
-            R.id.action_settings -> true
-            else -> super.onOptionsItemSelected(item)
+    @SuppressLint("MissingPermission")
+    private fun scanLeDevice() {
+        if (!scanning) {
+            handler.postDelayed(@androidx.annotation.RequiresPermission(android.Manifest.permission.BLUETOOTH_SCAN) {
+                if(found) {
+                    scanning = false
+                    scanner?.stopScan(leScanCallback)
+                    Log.d("[BLE]", "Target found. Scan to stopped.")
+                }
+                Log.d("[BLE]", "Target not found. Scanning...")
+            }, SCAN_PERIOD)
+
+            val scanSettings = ScanSettings.Builder()
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY) // or BALANCED / LOW_POWER
+                .build()
+
+            scanning = true
+            scanner?.startScan(null,scanSettings,leScanCallback)
+            Log.d("[BLE]", "Scan started.")
+        } else {
+            scanning = false
+            scanner?.stopScan(leScanCallback)
+            Log.d("[BLE]", "Scan manually stopped.")
         }
     }
 
-    override fun onSupportNavigateUp(): Boolean {
-    val navController = findNavController(R.id.nav_host_fragment_content_main)
-    return navController.navigateUp(appBarConfiguration)
-            || super.onSupportNavigateUp()
+
+    val gattCallback = object : BluetoothGattCallback() {
+        @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+        override fun onConnectionStateChange(
+            gatt: BluetoothGatt,
+            status: Int,
+            newState: Int
+        ) {
+            super.onConnectionStateChange(gatt, status, newState)
+
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                Log.d("BLE", "Connected to GATT server")
+                gatt.discoverServices()
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                Log.d("BLE", "Disconnected from GATT server")
+            }
+        }
+
+        override fun onServicesDiscovered(
+            gatt: BluetoothGatt,
+            status: Int
+        ) {
+            super.onServicesDiscovered(gatt, status)
+            // Your service discovery logic
+        }
+
+        override fun onCharacteristicWrite(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            status: Int
+        ) {
+            super.onCharacteristicWrite(gatt, characteristic, status)
+            // Your write result logic
+        }
     }
 
-    private  var bluetoothAdapter: BluetoothAdapter? = null
-    private  var bluetoothLeScanner: BluetoothLeScanner? = null
+    private val leScanCallback: ScanCallback = object : ScanCallback() {
 
-    private fun startScanning() {
-        // Check if location permission is granted
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // Request permission if not granted
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,), 0)
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-            // Request permission if not granted
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.BLUETOOTH_SCAN,), 0)
-        }
-        Toast.makeText(this@MainActivity, "TEST", Toast.LENGTH_SHORT).show()
-        bluetoothLeScanner!!.startScan(scanCallback)
-    }
-
-    private val scanCallback = object : ScanCallback() {
         @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             super.onScanResult(callbackType, result)
-
-            val device: BluetoothDevice = result.device
-            val deviceName: String = device.name ?: "Unknown"
-            val deviceAddress: String = device.address
-
-            // Show a Toast message with the device details
-            Toast.makeText(this@MainActivity, "Device found: $deviceName ($deviceAddress)", Toast.LENGTH_SHORT).show()
-        }
-
-        override fun onScanFailed(errorCode: Int) {
-            super.onScanFailed(errorCode)
-            Toast.makeText(this@MainActivity, "Scan failed with error code: $errorCode", Toast.LENGTH_SHORT).show()
+            val deviceName = result.device.name ?: "Unnamed"
+            Log.d("[BLE]", "Device found: $deviceName, address: ${result.device.address}")
+            if(result.device.name=="FE5D153CA5CA" && result.device.address=="78:6D:EB:49:97:84") {
+                Log.d("[BLE]", "Target found")
+                found=true
+                result.device.connectGatt(this@MainActivity, false, gattCallback)
+            }
         }
     }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
-    override fun onPause() {
-        super.onPause()
-        // Stop scanning when the activity is paused
-        bluetoothLeScanner!!.stopScan(scanCallback)
-    }
-
-
 }
