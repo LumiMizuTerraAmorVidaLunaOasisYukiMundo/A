@@ -2,20 +2,33 @@ package com.example.myapplication
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.bluetooth.*
-import android.bluetooth.le.*
-import android.content.Context
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCallback
+import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothProfile
+import android.bluetooth.le.BluetoothLeScanner
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanResult
+import android.bluetooth.le.ScanSettings
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.View
 import android.widget.Button
+import android.widget.ScrollView
+import android.widget.SeekBar
+import android.widget.Switch
+import android.widget.TextView
 import androidx.annotation.RequiresPermission
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import java.util.UUID
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -29,12 +42,30 @@ class MainActivity : AppCompatActivity() {
     private lateinit var gatt: BluetoothGatt
     private lateinit var characteristic: BluetoothGattCharacteristic
 
+    private lateinit var logView: TextView
+
+
+    private fun log(tag: String, message: String) {
+        runOnUiThread {
+            logView.append("$message\n")
+            val scrollView = logView.parent as ScrollView
+            scrollView.post {
+                scrollView.fullScroll(View.FOCUS_DOWN)
+            }
+        }
+        Log.d(tag,message)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Permission check
+        logView = findViewById(R.id.logView)
+        val slider1 = findViewById<SeekBar>(R.id.slider1)
+        val slider2 = findViewById<SeekBar>(R.id.slider2)
+        val switch = findViewById<Switch>(R.id.switch1)
+
+
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -51,12 +82,20 @@ class MainActivity : AppCompatActivity() {
         val writeButton = findViewById<Button>(R.id.writeButton)
 
         scanButton.setOnClickListener {
-            scanLeDevice()  // Start scanning when the button is clicked
+            scanLeDevice()
         }
 
         writeButton.setOnClickListener {
-            writeBytesToCharacteristic(byteArrayOf(0x01, 0x02, 0x03))  // Example data to write
+
+            val buffer = ByteBuffer.allocate(4 * 3).order(ByteOrder.LITTLE_ENDIAN)
+            buffer.putInt(slider1.progress)
+            buffer.putInt(slider2.progress)
+            buffer.putInt(if (switch.isChecked) 1 else 0)
+            writeBytesToCharacteristic(buffer.array())
         }
+
+        // auto start
+        scanLeDevice()
     }
 
     @SuppressLint("MissingPermission")
@@ -68,7 +107,7 @@ class MainActivity : AppCompatActivity() {
                     scanner?.stopScan(leScanCallback)
                     Log.d("[BLE]", "Target found. Scan stopped.")
                 } else {
-                    Log.d("[BLE]", "Target not found. Scanning...")
+                    log("[BLE]", "Target not found. Scanning...")
                 }
             }, SCAN_PERIOD)
 
@@ -78,11 +117,11 @@ class MainActivity : AppCompatActivity() {
 
             scanning = true
             scanner?.startScan(null, scanSettings, leScanCallback)
-            Log.d("[BLE]", "Scan started.")
+            log("[BLE]", "Scan started.")
         } else {
             scanning = false
             scanner?.stopScan(leScanCallback)
-            Log.d("[BLE]", "Scan manually stopped.")
+            log("[BLE]", "Scan manually stopped.")
         }
     }
 
@@ -92,10 +131,10 @@ class MainActivity : AppCompatActivity() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             super.onScanResult(callbackType, result)
             val deviceName = result.device.name ?: "Unnamed"
-            Log.d("[BLE]", "Device found: $deviceName, address: ${result.device.address}")
+            log("[BLE]", "Device found: $deviceName, address: ${result.device.address}")
 
-            if (result.device.address == "78:6D:EB:49:97:84") {
-                Log.d("[BLE]", "Target found: ${result.device.name}")
+            if (result.device.address == "78:6D:EB:49:97:84" || result.device.address ==  "BE:32:02:F5:6D:84") {
+                log("[BLE]", "Target found: ${result.device.name}")
                 found = true
                 result.device.connectGatt(this@MainActivity, false, gattCallback) // Connect to the device
                 scanner?.stopScan(this)  // Stop scanning once the target is found
@@ -110,32 +149,41 @@ class MainActivity : AppCompatActivity() {
             super.onConnectionStateChange(gatt, status, newState)
 
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                Log.d("[BLE:GAT]", "Connected to GATT server")
+                log("[BLE:GAT]", "Connected to GATT server")
                 gatt.discoverServices()  // Discover services once connected
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                Log.d("[BLE:GAT]", "Disconnected from GATT server")
+                log("[BLE:GAT]", "Disconnected from GATT server")
             }else{
-                Log.d("[BLE:GAT]", newState.toString())
+                log("[BLE:GAT:STATUS]", newState.toString())
             }
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             super.onServicesDiscovered(gatt, status)
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d("[BLE:GAT]", "Services discovered")
+                log("[BLE:GAT]", "Services discovered")
 
-                val CHARACTERISTIC_UUID = UUID.fromString("0000xxxx-0000-1000-8000-00805f9b34fb") // Replace with the actual characteristic UUID
-                val SERVICE_UUID = UUID.fromString("0000xxxx-0000-1000-8000-00805f9b34fb") // Replace with the actual service UUID
+                for (service in gatt.services) {
+                    log("[BLE:GAT]", "Service UUID: ${service.uuid}")
+                    for (characteristic in service.characteristics) {
+                        log("[BLE:GAT]", "\tCharacteristic UUID: ${characteristic.uuid}")
 
-                val service = gatt.getService(SERVICE_UUID)
-                characteristic = service.getCharacteristic(CHARACTERISTIC_UUID) // Get the target characteristic
+                        this@MainActivity.characteristic = characteristic
+                        this@MainActivity.gatt = gatt
+                        if (characteristic.properties and BluetoothGattCharacteristic.PROPERTY_WRITE > 0) {
+                            this@MainActivity.characteristic = characteristic
+                            this@MainActivity.gatt = gatt
+                            log("[BLE:GAT]", "\tWritable characteristic set")
+                        }
+                    }
+                }
             }
         }
 
         override fun onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
             super.onCharacteristicWrite(gatt, characteristic, status)
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d("[BLE:GAT]", "Successfully written to characteristic!")
+                log("[BLE:GAT]", "characteristic write succeeded")
             }
         }
     }
@@ -143,16 +191,17 @@ class MainActivity : AppCompatActivity() {
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun writeBytesToCharacteristic(data: ByteArray) {
         // Write data to the characteristic if connected
+        log("[BLE]", "attempting write "+data.joinToString(" ") { "%02X".format(it) })
         if (this::gatt.isInitialized && this::characteristic.isInitialized) {
             characteristic.value = data
             val success = gatt.writeCharacteristic(characteristic)
             if (success) {
-                Log.d("[BLE]", "Write initiated")
+                log("[BLE]", "Write initiated for ${characteristic.uuid}")
             } else {
-                Log.d("[BLE]", "Write failed")
+                log("[BLE]", "Write failed")
             }
         } else {
-            Log.d("[BLE]", "GATT or characteristic not initialized")
+            log("[BLE]", "GATT or characteristic not initialized")
         }
     }
 }
