@@ -14,43 +14,49 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <SeekBar
-            android:id="@+id/slider1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:max="100" />
-
-        <SeekBar
-            android:id="@+id/slider2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:max="100" />
-
-        <Switch
-            android:id="@+id/switch1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Switch" />
-
         <TableRow
             android:layout_width="match_parent"
             android:layout_height="94dp">
 
-            <Button
-                android:id="@+id/writeButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerHorizontal="true"
-                android:layout_marginTop="16dp"
-                android:text="WRITE" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal">
 
-            <Button
-                android:id="@+id/scanButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerHorizontal="true"
-                android:layout_marginTop="16dp"
-                android:text="SCAN" />
+                <Button
+                    android:id="@+id/scanButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="83dp"
+                    android:layout_centerHorizontal="true"
+                    android:layout_marginTop="16dp"
+                    android:text="SCAN" />
+
+                <LinearLayout
+                    android:layout_width="172dp"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical">
+
+                    <Switch
+                        android:id="@+id/switch1"
+                        android:layout_width="match_parent"
+                        android:layout_height="43dp"
+                        android:text="aggggg" />
+
+                    <SeekBar
+                        android:id="@+id/slider1"
+                        android:layout_width="match_parent"
+                        android:layout_height="51dp"
+                        android:max="100" />
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/writeButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="84dp"
+                    android:layout_centerHorizontal="true"
+                    android:layout_marginTop="16dp"
+                    android:text="WRITE" />
+            </LinearLayout>
 
 
         </TableRow>
@@ -68,7 +74,7 @@
                 android:scrollbars="vertical"
                 android:textColor="#00FF00"
                 android:textIsSelectable="true"
-                android:textSize="26sp" />
+                android:textSize="14sp" />
         </ScrollView>
 
     </LinearLayout>
