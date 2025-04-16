@@ -32,7 +32,6 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
 
-
 class MainActivity : AppCompatActivity() {
 
     private val SCAN_PERIOD: Long = 10000
@@ -41,15 +40,10 @@ class MainActivity : AppCompatActivity() {
     private var scanner: BluetoothLeScanner? = null
     private val handler = Handler(Looper.getMainLooper())
     private var found = false
-
     private lateinit var bluetoothGatt: BluetoothGatt
     private lateinit var bluetoothCharacteristic: BluetoothGattCharacteristic
-
     private lateinit var logView: TextView
-
-
     private val TARGET_DEVICE_NAME = "Liam_BLE"
-
 
     private fun log(tag: String, message: String) {
         runOnUiThread {
@@ -70,11 +64,9 @@ class MainActivity : AppCompatActivity() {
         val slider1 = findViewById<SeekBar>(R.id.slider1)
         val switch = findViewById<Switch>(R.id.switch1)
 
-
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
             ActivityCompat.requestPermissions(this,
                 arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.ACCESS_FINE_LOCATION),
                 1)
@@ -102,7 +94,6 @@ class MainActivity : AppCompatActivity() {
         startScan()
     }
 
-    // Start scanning using BLE scanner
     @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
     private fun startScan() {
         val scanner = bluetoothAdapter.bluetoothLeScanner
@@ -119,7 +110,6 @@ class MainActivity : AppCompatActivity() {
         log("BLE", "Scan started...")
     }
 
-    // ScanCallback to process discovered devices
     private val leScanCallback = object : ScanCallback() {
         @RequiresPermission(allOf = [Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN])
         override fun onScanResult(callbackType: Int, result: ScanResult) {
@@ -141,14 +131,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Connect to the BLE device.
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun connectToDevice(device: BluetoothDevice) {
-        // For Android 12+ include BLUETOOTH_CONNECT permission in the connectGatt call.
         bluetoothGatt = device.connectGatt(this, false, gattCallback,BluetoothDevice.TRANSPORT_LE)
     }
 
-    // BluetoothGattCallback to handle connection and service discovery events.
     private val gattCallback = object : BluetoothGattCallback() {
 
         @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -184,24 +171,17 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onCharacteristicWrite(
-            gatt: BluetoothGatt,
-            characteristic: BluetoothGattCharacteristic,
-            status: Int
-        ) {
+            gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 log("BLE", "Characteristic write succeeded")
             } else {
                 Log.e("BLE", "Characteristic write failed with status: $status")
             }
         }
-
-
-
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun writeBytesToCharacteristic(data: ByteArray) {
-        // Write data to the characteristic if connected
         log("[BLE]", "attempting write "+data.joinToString(" ") { "%02X".format(it) })
         if (this::bluetoothGatt.isInitialized && this::bluetoothCharacteristic.isInitialized) {
             bluetoothCharacteristic.value = data
@@ -214,20 +194,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             log("[BLE]", "GATT or characteristic not initialized")
         }
-    }
-
-
-    // Writes sample data to the characteristic.
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    private fun writeToCharacteristic(
-        gatt: BluetoothGatt,
-        characteristic: BluetoothGattCharacteristic
-    ) {
-        // The data you want to send (for example, "Hello from Android")
-        val dataToWrite = "Hello from Android".toByteArray(Charsets.UTF_8)
-        characteristic.value = dataToWrite
-        val success = gatt.writeCharacteristic(characteristic)
-        log("BLE", "Initiated write operation: $success")
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
