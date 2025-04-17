@@ -31,6 +31,8 @@ import androidx.core.content.ContextCompat
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
+import kotlin.experimental.and
+import kotlin.experimental.or
 
 class MainActivity : AppCompatActivity() {
 
@@ -84,9 +86,9 @@ class MainActivity : AppCompatActivity() {
 
         writeButton.setOnClickListener {
 
-            val buffer = ByteBuffer.allocate(4 * 2).order(ByteOrder.LITTLE_ENDIAN)
-            buffer.putInt(slider1.progress)
-            buffer.putInt(if (switch.isChecked) 1 else 0)
+            val buffer = ByteBuffer.allocate(1).order(ByteOrder.LITTLE_ENDIAN)
+            val v=(slider1.progress.toByte() and 0x80.inv().toByte()) or (if (switch.isChecked) 0x80 else 0).toByte()
+            buffer.put(v)
             writeBytesToCharacteristic(buffer.array())
         }
 
