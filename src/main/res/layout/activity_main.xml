@@ -32,7 +32,7 @@
                     android:text="SCAN" />
 
                 <LinearLayout
-                    android:layout_width="172dp"
+                    android:layout_width="162dp"
                     android:layout_height="match_parent"
                     android:orientation="vertical">
 
@@ -50,12 +50,14 @@
                 </LinearLayout>
 
                 <Button
-                    android:id="@+id/writeButton"
+                    android:id="@+id/writeButton4"
                     android:layout_width="wrap_content"
                     android:layout_height="84dp"
                     android:layout_centerHorizontal="true"
                     android:layout_marginTop="16dp"
+                    android:layout_weight="1"
                     android:text="WRITE" />
+
             </LinearLayout>
 
 
@@ -63,7 +65,7 @@
 
         <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="0dp"
+            android:layout_height="540dp"
             android:layout_weight="1">
 
             <TextView
@@ -76,6 +78,40 @@
                 android:textIsSelectable="true"
                 android:textSize="14sp" />
         </ScrollView>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="129dp"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <Button
+                android:id="@+id/writeButton"
+                android:layout_width="wrap_content"
+                android:layout_height="84dp"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="16dp"
+                android:text="WRITE" />
+
+            <Button
+                android:id="@+id/writeButton2"
+                android:layout_width="wrap_content"
+                android:layout_height="84dp"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="16dp"
+                android:layout_weight="1"
+                android:text="WRITE" />
+
+            <Button
+                android:id="@+id/writeButton3"
+                android:layout_width="wrap_content"
+                android:layout_height="84dp"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="16dp"
+                android:layout_weight="1"
+                android:text="WRITE" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

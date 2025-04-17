@@ -85,12 +85,28 @@ class MainActivity : AppCompatActivity() {
         }
 
         writeButton.setOnClickListener {
-
             val buffer = ByteBuffer.allocate(1).order(ByteOrder.LITTLE_ENDIAN)
             val v=(slider1.progress.toByte() and 0x80.inv().toByte()) or (if (switch.isChecked) 0x80 else 0).toByte()
             buffer.put(v)
             writeBytesToCharacteristic(buffer.array())
         }
+
+        findViewById<Button>(R.id.writeButton2).setOnClickListener {
+            val v=slider1.progress.toString()
+            log("write","writing '$v'")
+            writeBytesToCharacteristic(v.toByteArray())
+        }
+        findViewById<Button>(R.id.writeButton3).setOnClickListener {
+            val v=slider1.progress.toString()+" "+(if (switch.isChecked) "true" else "false")
+            log("write","writing '$v'")
+            writeBytesToCharacteristic(v.toByteArray())
+        }
+        findViewById<Button>(R.id.writeButton4).setOnClickListener {
+            val v=slider1.progress.toString()+" "+(if (switch.isChecked) "1" else "0")
+            log("write","writing '$v'")
+            writeBytesToCharacteristic(v.toByteArray())
+        }
+
 
         // auto start
         startScan()
